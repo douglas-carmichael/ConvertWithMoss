@@ -1,8 +1,7 @@
-# E-mu Emulator II Disk Format — Investigation
+# E-mu Emulator II Disk Format
 
-**Status: the physical layer is implemented and verified; no detector or creator exists yet.**
-`file/hfe/EmuFmDecoder` reads Emulator II disks and reproduces a reference raw sector image byte for
-byte. The logical bank layout is still unknown and is the remaining work. Sections are marked
+**Status: reading is implemented.** `file/hfe/EmuFmDecoder` reads the disks and
+`format/emu/emulator2/Emulator2Detector` turns their banks into multi-samples. There is no creator. Sections are marked
 *confirmed*, *reported* or *unknown* so later work does not mistake a second-hand figure for a
 verified one.
 
@@ -122,10 +121,9 @@ in-memory data structure, so the logical layout can be recovered by locating tab
 
 `EMUIIOS31.E2O` (72,704 bytes) is byte-identical to the **first 72,704 bytes** of the OS disk image
 `emuiios.emuiifd`, at offset 0. So the OS payload occupies `0x00000`–`0x11BFF`, spanning tracks 0–20
-with track 20 only partly used. A secondary source places the bank start at 78,848 (= track 22,
-track-aligned and just past the OS); that is plausible but not yet verified against a bank disk.
-The same source's bank end of 564,734 is not track-aligned and does not reconcile with the geometry —
-treat it as unreliable.
+with track 20 only partly used. The bank then starts at the next track boundary but one, 78,848
+(= track 22), which is confirmed below. A secondary source's bank end of 564,734 is not track-aligned
+and does not reconcile with the geometry — treat it as unreliable.
 
 ## Image containers — *confirmed*
 
@@ -263,9 +261,17 @@ which is how a 12-string's paired courses reuse one recording with different end
 
 ### Key maps and the root key — *confirmed*
 
-The three 61-byte tables are read together. For key *k*: `bank+0x00C` gives the one-based voice
-number, `bank+0x049` the same as an identifier, and `bank+0x086` a **transposition index** which
-ascends by one per semitone. The value **`0x0E` marks unity**, so
+The three 61-byte tables are read together. For key *k*: `bank+0x049` gives the **voice identifier**,
+`bank+0x00C` a voice number for the display and `bank+0x086` a **transposition index** which ascends
+by one per semitone. The value **`0x0E` marks unity**, so
+
+Identifiers start at **`0x9B`** and follow the order of the voice records, so the record of a key is
+simply `identifier - 0x9B`; an identifier below that means the key is silent. The table at
+`bank+0x00C` looks like the same thing biased by a constant and is **not** usable to find a record:
+its base differs from bank to bank - 1 on `12 STRING GUITAR 1`, 6 on `SLEIGH BELLS`, 60 on `DRUMS` -
+while the identifiers of all three start at `0x9B`. Indexing by it happens to work on banks whose
+base is 1 and silently reads sample data as a voice record on the rest.
+
 
 ```
 root key = k - (transposition[k] - 0x0E)          MIDI note = key index + 26
@@ -303,32 +309,48 @@ no signature at all and may be a different bank revision; that is not yet explai
   tuning, matching the voice names, and only correct because the sample rate really is 27,777 Hz.
   The same bytes read image-relative instead of bank-relative are not signal-like at all.
 
-### The sample encoding — *unresolved, and it blocks the detector*
+### The sample encoding — *confirmed*
 
-Everything above is enough to build the *structure* of a multi-sample: names, zones, key ranges, root
-keys, loop points. What is still missing is how a stored byte becomes a sample value, and without it
-a detector would emit audio of unknown correctness.
+The service manual settles it: "Each output channel consists of an input latch, (74HCT374) a DAC,
+(6072)". The **AM6072 is a companding DAC**, so the expansion is done in hardware and the stored byte
+is already a µ-255 code - which is what "8-bit companded" means on this machine. The byte is a
+**sign in bit 7, a chord in bits 6 to 4 and a step in bits 3 to 0**, and
 
-The addressed bytes are certainly the right audio: autocorrelation returns the pitch each voice name
-promises, at the documented 27,777 Hz. But they are not a memoryless encoding of the published
-reference extraction of the same disks:
+```
+magnitude = ((step * 2 + 33) << chord) - 33          full scale 8031
+```
 
-- A reference WAV (`EIIwaves`, 16-bit, 27,778 Hz) is exactly one slot long - 66,403 frames against a
-  slot size of 66,405 - and carries the same note as the voice it belongs to.
-- Tabulating stored byte against reference sample gives no function: 118 of the 125 byte values which
-  occur map to many reference values, with a spread covering nearly the whole signal range, and the
-  per-byte medians are not monotonic.
-- Neither is it differential: as a DPCM code, 117 of 125 byte values produce more than one delta.
-- Aligning the two streams fails. A normalized cross-correlation over ±4000 frames has no peak; the
-  best values sit near 0.41 and repeat at exactly the pitch period, which is self-similarity of a
-  periodic tone, not registration.
-- Linear, G.711 µ-law in both polarities, an exponential curve, sign-magnitude in both polarities and
-  two's complement all correlate at 0.29 or below.
+Two independent checks confirm the shape. Decoding a voice and measuring the ratio of harmonic to
+total energy gives 0.82 for the sign-plus-magnitude reading against 0.67 for a plain linear reading
+and 0.54 for G.711 with its inverted bits. And a histogram of the stored magnitudes over four disks
+steps *up* at each multiple of 16 instead of decaying - the signature of a segmented code, where a
+code in the next chord covers twice the amplitude range - with all eight chords in use.
 
-So the two are the same note but not the same byte stream under any simple law. Either the reference
-extraction applies its own reconstruction filtering and resampling on top of the expansion, or the
-sampler stores its audio in an arrangement not yet understood. Resolving this needs either a
-reference whose provenance is known, or the expansion routine read out of the `.E2O` Z80 code.
+Note that the published `EIIwaves` extraction of these disks is **not** a per-sample decode of the
+stored bytes: tabulating one against the other yields no function, and cross-correlating them over
+±4000 frames finds no alignment at all, only self-similarity at the pitch period. It carries the same
+notes and the same slot length, so it is useful for counting samples, but it cannot calibrate the
+expansion and was not used to.
+
+The absolute polarity of the sign bit is not verified; it is inaudible in a mono sample.
+
+### The detector
+
+`format/emu/emulator2/Emulator2Detector` reads `.img`, `.emuiifd`, `.eii` and `.hfe` and turns one
+disk into one multi-sample: a zone per run of keys which share a voice and a rising transposition,
+with the key range, root key, name and loop of each, and the audio expanded through the AM6072 law.
+
+Measured over the whole corpus of 1,437 disks: **1,414 produce a multi-sample and none produce an
+error**. Of the rest, some are continuation disks of a bank which is larger than one floppy - the
+Emulator II+ holds 1 MB of samples and a floppy holds 494,592 bytes of bank - and those are reported
+rather than silently skipped, because a voice whose audio lies past the end of the disk is a bank
+that continues elsewhere, not a broken file. 251 disks report at least one such voice and still yield
+their complete voices.
+
+Spot check of `12 STRING GUITAR 1` converted to SFZ: six voices at roots 40, 45, 50, 55, 59 and 64 -
+E2 A2 D3 G3 B3 E4 - with the low E additionally mapped an octave down over the bottom keys, which is
+the transposition restart described above, and loops of 1342, 1509, 1700, 1980, 562 and 336 frames.
+The exported audio measures 82.4, 110.7, 147.8, 196, 248.0 and 330.7 Hz at 27,777 Hz.
 
 ### Still to decode
 
