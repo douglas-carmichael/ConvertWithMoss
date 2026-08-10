@@ -241,18 +241,47 @@ identifiers: a one-voice disk lists `9B`, and a twelve-voice disk lists `9B 9C �
 
 ### Voice records — *confirmed*
 
-An array of **256-byte records**, on the disks examined beginning at `bank+0x5BA`:
+An array of **256-byte records** beginning at **`bank+0x5BA`**, which holds on 198 of 200 disks
+sampled; the voice number stored in the key map indexes it one-based.
 
 | Offset | Size | Content |
 |--------|------|---------|
 | `+0x00` | 12 | name, ASCII, space padded (`12string E  `) |
 | `+0x0D` | 3 | **sample start**, 24-bit little-endian, **relative to the bank start** |
-| `+0x13` | 3 | **sample end**, same encoding |
+| `+0x10` | 3 | **slot size** - the fixed stride at which sample slots are allocated; consecutive voices' start addresses differ by exactly this |
+| `+0x13` | 3 | **sample end** |
+| `+0x16` | 3 | **loop length** |
 | `+0x19` | 3 | **loop start**; equals the sample start where no loop is set |
 
-The remaining fields - `+0x0C`, `+0x10`, `+0x16`, `+0x1C` and the parameter blocks from `+0x46` -
-are not decoded yet. Two voices may share a start address, which is how a 12-string's paired courses
-reuse one recording with different end points.
+The loop length is confirmed by pitch: for the six voices of `12 STRING GUITAR 1` it is 1342, 1509,
+1700, 1980, 562 and 336 frames against measured pitch periods of 337, 252, 188, 142, 112 and 84 -
+exactly 4, 6, 9, 14, 5 and 4 whole periods. A loop length which lands on an integer number of periods
+for every voice is not a coincidence.
+
+`+0x0C` and the parameter blocks from `+0x46` are not decoded. Two voices may share a start address,
+which is how a 12-string's paired courses reuse one recording with different end points.
+
+### Key maps and the root key — *confirmed*
+
+The three 61-byte tables are read together. For key *k*: `bank+0x00C` gives the one-based voice
+number, `bank+0x049` the same as an identifier, and `bank+0x086` a **transposition index** which
+ascends by one per semitone. The value **`0x0E` marks unity**, so
+
+```
+root key = k - (transposition[k] - 0x0E)          MIDI note = key index + 26
+```
+
+A zone is a run of consecutive keys with the same voice whose transposition index increases by one;
+where the index restarts inside a voice's span, the voice is mapped twice with different roots, which
+is what the sampler does.
+
+Both halves of the rule are confirmed against measured pitch. On `12 STRING GUITAR 1` the six voices
+resolve to key 14, 19, 24, 29, 33 and 38 - intervals of 5, 5, 5, 4 and 5 semitones, which is exactly
+standard guitar tuning - and with a base of 26 those are MIDI 40, 45, 50, 55, 59 and 64, i.e.
+E2 A2 D3 G3 B3 E4. Voices whose name states their pitch confirm the base independently:
+`CS 816 G2` resolves to MIDI 43, `CLAVINET F2` to 41, `CLAVINET F3` to 53 and `Piano TineG3` to 55,
+each matching both its name and its measured pitch. Measured pitches run about 0.1 semitone sharp of
+the nominal note throughout, which is a property of the instrument, not of the rule.
 
 ### Preset records — *confirmed signature, variable length*
 
@@ -274,11 +303,38 @@ no signature at all and may be a different bank revision; that is not yet explai
   tuning, matching the voice names, and only correct because the sample rate really is 27,777 Hz.
   The same bytes read image-relative instead of bank-relative are not signal-like at all.
 
+### The sample encoding — *unresolved, and it blocks the detector*
+
+Everything above is enough to build the *structure* of a multi-sample: names, zones, key ranges, root
+keys, loop points. What is still missing is how a stored byte becomes a sample value, and without it
+a detector would emit audio of unknown correctness.
+
+The addressed bytes are certainly the right audio: autocorrelation returns the pitch each voice name
+promises, at the documented 27,777 Hz. But they are not a memoryless encoding of the published
+reference extraction of the same disks:
+
+- A reference WAV (`EIIwaves`, 16-bit, 27,778 Hz) is exactly one slot long - 66,403 frames against a
+  slot size of 66,405 - and carries the same note as the voice it belongs to.
+- Tabulating stored byte against reference sample gives no function: 118 of the 125 byte values which
+  occur map to many reference values, with a spread covering nearly the whole signal range, and the
+  per-byte medians are not monotonic.
+- Neither is it differential: as a DPCM code, 117 of 125 byte values produce more than one delta.
+- Aligning the two streams fails. A normalized cross-correlation over ±4000 frames has no peak; the
+  best values sit near 0.41 and repeat at exactly the pitch period, which is self-similarity of a
+  periodic tone, not registration.
+- Linear, G.711 µ-law in both polarities, an exponential curve, sign-magnitude in both polarities and
+  two's complement all correlate at 0.29 or below.
+
+So the two are the same note but not the same byte stream under any simple law. Either the reference
+extraction applies its own reconstruction filtering and resampling on top of the expansion, or the
+sampler stores its audio in an arrangement not yet understood. Resolving this needs either a
+reference whose provenance is known, or the expansion routine read out of the `.E2O` Z80 code.
+
 ### Still to decode
 
-Loop end and loop enable; the root key and any per-voice tuning; velocity and key ranges as the
-preset expresses them (the key maps give the assignment, but not the zone parameters); the envelope,
-filter and chorus settings; and the exact preset record layout beyond its signature and name.
+The sample encoding above; loop enable; per-voice tuning and level; velocity ranges; the envelope,
+filter and chorus settings; and the preset record layout beyond its signature and name. 43 disks
+carry no preset signature at all and may be a different bank revision.
 
 ## Plan
 
