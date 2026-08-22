@@ -315,10 +315,14 @@ header line. A line has 16 columns:
 | 14 | CrossFade | loop cross-fade | 0..1; what length the fraction refers to is not verified (see "Open questions") |
 | 15 | TrackPitch | 1 = the entry follows the keyboard, 0 = fixed pitch | integer |
 
-Floating point columns are written with 8 decimal places (`%.8f`), integers plain. The entries of
-one map are independent; key ranges may overlap (several entries then sound on the same key, which
-is how the two oscillators of a layered sound can also be put into one map), and nothing in the map
-expresses round robins.
+Floating point columns are written with 8 decimal places (`%.8f`), integers plain.
+
+**Entries which overlap alternate; they do not stack (hw).** Two entries of the *same* map whose key
+*and* velocity ranges overlap are played one after the other on successive notes - a round robin -
+and not together. Observed on an Iridium MK2 (2026-08-22) with one map holding two full-range
+entries. That matters in both directions: the parts of a sound which are meant to be **heard
+together** have to be spread over the oscillators or the layers and must not be folded into one map,
+while a round robin - for which the map has no column of its own - is expressed exactly this way.
 
 ### 4.2 Positions are fractions of the file length
 
@@ -712,7 +716,10 @@ device-written), writing them has not.
 * **Resource type 7.** Seen only in MK2 patches which use the Param Sequence; the content (9 byte
   records of u8, u32, f32 - by their values a step, a parameter id and a value) is not decoded.
 * **Absent parameters.** Whether the device resets a parameter which a file does not contain, or
-  keeps the value of the previously loaded patch, has not been tested (section 2.3).
+  keeps the value of the previously loaded patch, is only partly answered: a second layer which
+  writes no `Osc2Type`/`Osc3Type` shows both oscillators as *Off* on the device rather than whatever
+  the previous patch had (hw, Iridium MK2, 2026-08-22), so at least those are reset to their
+  default. Whether that holds for every parameter has not been tested.
 * **Velocity column range.** ConvertWithMoss writes 0 for an open lower bound and the device loads
   it; whether the device distinguishes 0 from 1 is unknown.
 * **Header padding** (the u16 at 234, the 3 bytes at 437 and the 64 bytes at 448) is unknown; write
@@ -740,10 +747,12 @@ For readers who want to compare an implementation against ConvertWithMoss (`Wald
   (overlap in key *and* velocity) is partitioned into layers of non-overlapping zones, largest
   first. The resulting groups fill the three oscillators of a layer and then, when the option allows
   it, those of a second layer - 3 groups with one layer, 6 with two; whatever does not fit is folded
-  into the last map, as it always was. Everything beyond the first layer is written in the
-  Multi/Layered mode. The common gain and panning of a group go to `Osc{i}Vol` / `Osc{i}Pan`, the
-  remainder into the map. Filter, amplifier envelope, velocity and LFOs are taken from the first
-  zone of the first group; the pitch envelope from the first zone of each group.
+  into the last map, as it always was - which changes what is heard, since those groups were
+  separated because they sound at the same time and entries which overlap inside one map alternate
+  instead (section 4.1). Everything beyond the first layer is written in the Multi/Layered mode. The
+  common gain and panning of a group go to `Osc{i}Vol` / `Osc{i}Pan`, the remainder into the map.
+  Filter, amplifier envelope, velocity and LFOs are taken from the first zone of the first group;
+  the pitch envelope from the first zone of each group.
 * **Policies**: the de-click and flat-envelope rules of section 7.2; hold + decay are added into the
   Decay stage; a pitch envelope which starts at a level is written as attack 0 and a decay of the
   source's attack time; the preset name drops a leading bank because the bank field holds it (unless
