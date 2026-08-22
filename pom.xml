@@ -16,6 +16,9 @@
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<main.class>de.mossgrabers.convertwithmoss.ui.ConvertWithMossApp</main.class>
+		<!-- Name of the packaged application. This fork builds under its own name so that it
+		     can be installed next to a stock ConvertWithMoss. -->
+		<app.name>ConvertWithMossML</app.name>
 	</properties>
 
 	<repositories>
@@ -170,6 +173,7 @@
 					<javaOptions>
 						<option>-Xmx64G</option>
 					</javaOptions>
+					<name>${app.name}</name>
 					<mainJar>convertwithmoss-${project.version}.jar</mainJar>
 					<mainClass>${main.class}</mainClass>
 					<appVersion>${project.version}</appVersion>
@@ -197,7 +201,7 @@
 							<winUpgradeUuid>18d24064-0bfa-425d-8b7f-e5efd5990d26</winUpgradeUuid>
 							<launchers>
 								<launcher>
-									<name>ConvertWithMossCLI</name>
+									<name>${app.name}CLI</name>
 									<file>${project.basedir}/ConvertWithMossCLI.properties</file>
 								</launcher>
 							</launchers>

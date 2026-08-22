@@ -90,7 +90,7 @@ public class CLIBackend implements INotifier
         {
             initStrings ();
 
-            final CommandSpec spec = CommandSpec.create ().name ("ConvertWithMoss");
+            final CommandSpec spec = CommandSpec.create ().name ("ConvertWithMossML");
             spec.mixinStandardHelpOptions (true).version (Functions.getMessage ("TITLE"));
 
             spec.addOption (OptionSpec.builder ("-s", "--source").paramLabel ("SOURCE").type (String.class).description ("The source format.").required (true).build ());
