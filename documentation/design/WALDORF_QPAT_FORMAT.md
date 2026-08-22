@@ -738,13 +738,12 @@ For readers who want to compare an implementation against ConvertWithMoss (`Wald
   (`depth = amount x 24 x 100 / 12000`), the VCA amount to its 96 dB volume depth.
 * **Writing**: split-stereo groups are combined into stereo files; a group whose zones stack
   (overlap in key *and* velocity) is partitioned into layers of non-overlapping zones, largest
-  first. The resulting groups fill the three oscillators of a layer and then, when the *Maximum
-  number of layers* option allows it, the following layers - 3 groups with one layer, 6 with two, 12
-  with four; whatever does not fit is folded into the last map, as it always was. Everything beyond
-  the first layer is written in the Multi/Layered mode. The common gain and panning of a group go to
-  `Osc{i}Vol` / `Osc{i}Pan`, the remainder into the map. Filter, amplifier envelope, velocity and
-  LFOs are taken from the first zone of the first group; the pitch envelope from the first zone of
-  each group.
+  first. The resulting groups fill the three oscillators of a layer and then, when the option allows
+  it, those of a second layer - 3 groups with one layer, 6 with two; whatever does not fit is folded
+  into the last map, as it always was. Everything beyond the first layer is written in the
+  Multi/Layered mode. The common gain and panning of a group go to `Osc{i}Vol` / `Osc{i}Pan`, the
+  remainder into the map. Filter, amplifier envelope, velocity and LFOs are taken from the first
+  zone of the first group; the pitch envelope from the first zone of each group.
 * **Policies**: the de-click and flat-envelope rules of section 7.2; hold + decay are added into the
   Decay stage; a pitch envelope which starts at a level is written as attack 0 and a decay of the
   source's attack time; the preset name drops a leading bank because the bank field holds it (unless
@@ -755,5 +754,7 @@ For readers who want to compare an implementation against ConvertWithMoss (`Wald
   Experimental*).
 * **Options**: re-sample to 16 bit / 44.1 kHz (default on), *Author* and *Bank* overrides, the
   `NNNNN-` import number prefix with a configurable first number, short file names which keep the
-  whole file name within 40 characters, and the *Maximum number of layers* (1, 2 or 4; 1 by default,
-  which writes exactly what earlier versions wrote).
+  whole file name within 40 characters, and *Use a second layer for more than 3 groups* (off by
+  default, which writes exactly what earlier versions wrote). It writes at most two layers - the
+  layer count 1, which every instrument of the family has stored since the format version 8 - and
+  never the four-layer count, which has only been seen in files of the version 15.
