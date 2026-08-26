@@ -8,6 +8,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -253,6 +254,7 @@ public class Emulator2Detector extends AbstractDetector<MetadataSettingsUI>
                 // voice was recorded at
                 zone.setKeyRoot (Emulator2Constants.LOWEST_KEY + range.firstKey + Emulator2Constants.TRANSPOSE_UNITY - transpose);
                 zone.setSampleData (sampleData);
+                Emulator2VoiceSettings.apply (zone, voice.record);
                 if (voice.hasLoop)
                 {
                     final ISampleLoop loop = new DefaultSampleLoop ();
@@ -368,6 +370,8 @@ public class Emulator2Detector extends AbstractDetector<MetadataSettingsUI>
         boolean truncated;
         /** A preset plays the voice. */
         boolean used;
+        /** The voice record, for its settings. */
+        byte [] record;
     }
 
 
@@ -532,6 +536,7 @@ public class Emulator2Detector extends AbstractDetector<MetadataSettingsUI>
         private void readVoice (final int voiceRecord)
         {
             final Voice voice = new Voice ();
+            voice.record = Arrays.copyOfRange (this.image, voiceRecord, voiceRecord + Emulator2Constants.VOICE_SIZE);
             voice.name = readName (this.image, voiceRecord + Emulator2Constants.VOICE_NAME, Emulator2Constants.VOICE_NAME_LENGTH);
             if (voice.name.isEmpty ())
                 voice.name = "Voice " + (this.voices.size () + 1);
