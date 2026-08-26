@@ -167,20 +167,27 @@ next voice slot is the next multiple of 256 bytes.
 ### Preset records — *confirmed*
 
 The two bytes in front of the first preset record hold its length, and **every record ends with
-the length of the next one** (0 ends the chain). A record:
+the length of the next one** (0 ends the chain). Behind the chain the heap holds leftovers - the
+records of deleted presets, and on some banks memory that never was a preset - into which a stale
+length word can point, so a record is only taken for a preset when its header has the small bytes
+and the top bit and its key ranges have counts and cover at most the 61 keys; the leftovers fail
+that with random bytes. The name is no criterion: the first reader required ASCII and stopped at
+the signature presets of the Northstar and OMI libraries, which lost the presets behind them on
+142 of the 1,481 banks of the community library, 792 presets (*Bamboo Flute Fx*: 2 of 10 survived). A record:
 
 | Offset | Size | Content |
 |--------|------|---------|
-| `+0` | 9 | header `01 04 00 00 00 00 02 03 89` on the newer OS versions, `01 00 00 00 00 00 00 00 81` / `00 … 80` on older ones; the top bit of the last byte is always set |
-| `+9` | 12 | name, ASCII, space padded |
+| `+0` | 9 | header `01 04 00 00 00 00 02 03 89` on the newer OS versions, `01 00 00 00 00 00 00 00 81` / `00 … 80` on older ones; `00 00 00 01 04 00 02 03 89` on the first record of some chains; the top bit of the last byte is always set and the eight bytes in front of it are always small values (0 to 6) |
+| `+9` | 12 | name, space padded; ASCII, except that the Sound Designer software of the Macintosh wrote its Mac Roman characters into it - `p&c© 1986 N*` is the signature preset of the Northstar libraries - and some names end with a stray tab or carriage return |
 | `+21` | 14 | parameters (*unknown*, `00 0B 00 00 00 00 00 00 00 00 00 00 50 04` is the most frequent) |
 | `+35` | | the **key range entries** |
 | | 4 | end marker `00 3D 00 00` (`0x3D` = 61 = the key behind the keyboard) |
 | | 2 | length of the next record |
 
 A key range entry is 5 bytes: `[mode << 6 | count] [00 or 08] [voice] [transposition] [level]`.
-The count is the number of keys, the ranges follow each other from the lowest key and always sum
-to 61. The mode is 1 for a silent range (voice 0), 2 for one voice and 3 for a range which plays
+The count is the number of keys, the ranges follow each other from the lowest key and sum to 61 -
+or to less, when a preset leaves the upper keys unassigned (47 of the 7,800 presets of the
+community library, e.g. `Crowd Noise` with 18 keys). The mode is 1 for a silent range (voice 0), 2 for one voice and 3 for a range which plays
 **two voices** - the second voice follows as 3 more bytes `[voice] [transposition] [level]`. The
 voice is a 1-based *voice number*, resolved through the voice list at `0x2CF` to a record; a bank
 without a voice list numbers its records in their order. The level is `0x70` on 361 of 375 factory
@@ -223,7 +230,7 @@ memory below `0x80000` − `0x9600`, so the audio behind bank offset `0x76A00` i
 voices on 32 of the 90 factory disks reach beyond it - *Orchestra Tune* by 26,859 frames, *Grand
 Piano* by 121 - and none of the OS 3.1 messages knows a bank on two disks (its "Insert Another
 Disk" prompts belong to the disk copy and format functions). Such a voice is cut at the end of
-the bank memory and noted; the first description took the whole 494,592-byte region for bank
+the bank memory and noted when a preset plays it; the first description took the whole 494,592-byte region for bank
 memory and read the blank last 8,704 bytes as audio, and reported the bank as continued on another
 disk.
 
