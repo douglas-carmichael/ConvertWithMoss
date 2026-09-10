@@ -18,6 +18,7 @@ import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -793,7 +794,9 @@ public abstract class AbstractDetector<T extends ICoreTaskSettings> extends Abst
         if (metadataDescription != null && !metadataDescription.isBlank ())
             metadata.setDescription (metadataDescription);
 
-        final Set<String> tokens = new HashSet<> ();
+        // The order of the tokens matters: a category tag at the start of the name declares the
+        // category and the name is the most specific of them, so it has to come before the folders
+        final Set<String> tokens = new LinkedHashSet<> ();
         tokens.addAll (Arrays.asList (parts));
         tokens.add (multisampleSourceName);
         final String [] descriptionTokens = metadata.getDescription ().split ("\\W");
