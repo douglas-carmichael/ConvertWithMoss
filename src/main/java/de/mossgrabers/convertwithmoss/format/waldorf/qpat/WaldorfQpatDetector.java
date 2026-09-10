@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -131,7 +132,7 @@ public class WaldorfQpatDetector extends AbstractDetector<MetadataSettingsUI>
      */
     public WaldorfQpatDetector (final INotifier notifier)
     {
-        super ("Waldorf Quantum/Iridium", "QPAT", notifier, new MetadataSettingsUI ("KorgMultisample"), ".qpat");
+        super ("Waldorf Quantum/Iridium", "QPAT", notifier, new MetadataSettingsUI ("QPAT"), ".qpat");
     }
 
 
@@ -166,7 +167,8 @@ public class WaldorfQpatDetector extends AbstractDetector<MetadataSettingsUI>
     private List<IMultisampleSource> parseFile (final InputStream in, final File file) throws IOException
     {
         final String name = FileUtils.getNameWithoutType (file);
-        final String [] parts = AudioFileUtils.createPathParts (file.getParentFile (), this.sourceFolder, name);
+        final String detectionName = this.settingsConfiguration.isPreferFolderName () ? this.sourceFolder.getName () : name;
+        final String [] parts = AudioFileUtils.createPathParts (file.getParentFile (), this.sourceFolder, detectionName);
 
         final byte [] fileData = in.readAllBytes ();
         final int [] layerOffsets = readLayerOffsets (fileData);
@@ -250,6 +252,7 @@ public class WaldorfQpatDetector extends AbstractDetector<MetadataSettingsUI>
         final InputStream in = new ByteArrayInputStream (fileData, layerOffset, fileData.length - layerOffset);
 
         final long version = readHeader (in, multisampleSource);
+        this.detectMetadata (multisampleSource, parts);
 
         final long numParams = StreamUtils.readUnsigned16 (in, false);
         // Skip padding
@@ -648,6 +651,26 @@ public class WaldorfQpatDetector extends AbstractDetector<MetadataSettingsUI>
             envelope.setReleaseSlope (envReleaseCurveParameter.value == 0 ? -1 : -0.5);
 
         return envelope;
+    }
+
+
+    /**
+     * Guess the metadata which the patch does not carry from its name, its folders and its bank,
+     * the way it is guessed for every other format. A patch without attributes therefore gets a
+     * category and keywords from its name - a library which was renamed or sorted into folders on
+     * the computer can be tagged by converting it again - and one without an author gets the
+     * default creator of the settings. What the patch does carry is kept.
+     *
+     * @param multisampleSource The multi-sample source to fill
+     * @param parts The path parts
+     */
+    private void detectMetadata (final IMultisampleSource multisampleSource, final String [] parts)
+    {
+        final IMetadata metadata = multisampleSource.getMetadata ();
+        final List<String> tokens = new ArrayList<> (Arrays.asList (parts));
+        tokens.add (multisampleSource.getName ());
+        tokens.addAll (Arrays.asList (metadata.getDescription ().split ("\\W")));
+        createMetadata (this.settingsConfiguration, metadata, Optional.empty (), tokens.toArray (new String [tokens.size ()]));
     }
 
 

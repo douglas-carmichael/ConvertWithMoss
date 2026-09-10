@@ -185,6 +185,56 @@ public class WaldorfQpatCreator extends AbstractWavCreator<WaldorfQpatCreatorUI>
         ATTRIBUTE_NAMES.put (TagDetector.CATEGORY_CLAP, TAG_PERCUSSIVE);
     }
 
+    /**
+     * The words which the factory sound sets use as attributes, with the spellings under which they
+     * are looked for in the name of a patch and in the keywords of the source. The device offers
+     * the attributes as filters, so a word which it knows is worth more than a word of its own: the
+     * category has no equivalent for the granular and the resonator sounds of the instrument, while
+     * a name which announces them - a wide-spread convention in libraries, e.g. 'GRAN Fields' or
+     * 'PHYS Digibow' - does. Everything which is not listed here is written the way it is.
+     */
+    private static final Map<String, String> VOCABULARY = new HashMap<> ();
+    static
+    {
+        addVocabulary ("Synth", "SYN", "SYNTHS");
+        addVocabulary ("Pad", "PADS");
+        addVocabulary ("Atmo", "ATMOS", "ATMOSPHERE", "ATMOSPHERIC");
+        addVocabulary ("Keys", "KEYBOARD");
+        addVocabulary ("FX", "EFFECT", "EFFECTS");
+        addVocabulary (TAG_PERCUSSIVE, "PERC", "PERCUSSION");
+        addVocabulary ("Epic");
+        addVocabulary ("PPG");
+        addVocabulary ("Lead", "LEADS");
+        addVocabulary ("Bass", "BASSES");
+        addVocabulary ("Arp", "ARPS", "ARPEGGIO", "ARPEGGIATED");
+        addVocabulary ("Noise", "NOISY");
+        addVocabulary ("Granular", "GRAN", "GRAINS");
+        addVocabulary ("Strings", "STRING");
+        addVocabulary ("Sequenced", "SEQ", "SEQUENCE", "SEQUENCER");
+        addVocabulary ("Vocal", "VOCALS", "VOX", "VOICE", "VOICES", "CHOIR");
+        addVocabulary ("FM");
+        addVocabulary ("Cinematic", "ORCHESTRAL", "SOUNDTRACK");
+        addVocabulary ("Resonator", "PHYS", "PHYSICAL");
+        addVocabulary ("Organ", "ORGANS");
+        addVocabulary ("Loop", "LOOPS");
+        addVocabulary ("Bells", "BELL");
+        addVocabulary ("Experimental");
+        addVocabulary ("Mono");
+        addVocabulary ("Piano", "PIANOS");
+        addVocabulary ("Drum", "DRUMS");
+        addVocabulary ("Kernels", "KERNEL");
+        addVocabulary ("Sample", "SAMPLED", "SAMPLER");
+        addVocabulary ("World", "ETHNIC");
+        addVocabulary ("Monophon", "MONOPHONIC");
+        addVocabulary ("Wavetable");
+        addVocabulary ("Pipe", "PIPES", "FLUT", "FLUTE", "FLUTES");
+        addVocabulary ("Winds", "WIND");
+        addVocabulary ("Space", "SPACEY");
+        addVocabulary ("Drone", "DRONES");
+        addVocabulary ("Pluck", "PLUK", "PLUCKS", "PLUCKED");
+        addVocabulary ("Brass", "BRAS");
+    }
+
     private int nextImportNumber = 0;
 
 
@@ -1242,7 +1292,7 @@ public class WaldorfQpatCreator extends AbstractWavCreator<WaldorfQpatCreatorUI>
         StreamUtils.writeAscii (out, StringUtils.fixASCII (metadata.getCreator ()), WaldorfQpatConstants.MAX_STRING_LENGTH);
         StreamUtils.writeAscii (out, StringUtils.fixASCII (metadata.getDescription ()).replace ('\r', ' ').replace ('\n', ' '), WaldorfQpatConstants.MAX_STRING_LENGTH);
 
-        writeAttributes (out, metadata);
+        writeAttributes (out, metadata, name);
     }
 
 
@@ -1255,15 +1305,20 @@ public class WaldorfQpatCreator extends AbstractWavCreator<WaldorfQpatCreatorUI>
      *
      * @param out The output stream to write to
      * @param metadata The metadata
+     * @param name The name of the patch, which is searched for further attributes
      * @throws IOException Could not write
      */
-    private static void writeAttributes (final OutputStream out, final IMetadata metadata) throws IOException
+    private static void writeAttributes (final OutputStream out, final IMetadata metadata, final String name) throws IOException
     {
         final List<String> attributes = new ArrayList<> ();
         final String category = metadata.getCategory ();
         addAttribute (attributes, ATTRIBUTE_NAMES.getOrDefault (category, category));
+        // A word of the device vocabulary in the name says more than a keyword, and it says what
+        // the category cannot - several categories of this application map onto 'Synth'
+        for (final String word: name.split ("[^A-Za-z0-9]+"))
+            addAttribute (attributes, VOCABULARY.get (word.toUpperCase (Locale.US)));
         for (final String keyword: metadata.getKeywords ())
-            addAttribute (attributes, keyword);
+            addAttribute (attributes, formatAttribute (keyword));
 
         for (int i = 0; i < 4; i++)
             StreamUtils.writeAscii (out, i < attributes.size () ? StringUtils.fixASCII (attributes.get (i)) : "", WaldorfQpatConstants.MAX_STRING_LENGTH);
@@ -1286,6 +1341,50 @@ public class WaldorfQpatCreator extends AbstractWavCreator<WaldorfQpatCreatorUI>
             if (present.equalsIgnoreCase (attribute))
                 return;
         attributes.add (attribute);
+    }
+
+
+    /**
+     * Register one word of the device vocabulary under its own spelling and under the given
+     * alternatives, which are the abbreviations that libraries use as a name prefix and the
+     * keywords of this application which mean the same.
+     *
+     * @param attribute The attribute in the spelling of the device
+     * @param alternatives The alternative spellings, in upper case
+     */
+    private static void addVocabulary (final String attribute, final String... alternatives)
+    {
+        VOCABULARY.put (attribute.toUpperCase (Locale.US), attribute);
+        for (final String alternative: alternatives)
+            VOCABULARY.put (alternative, attribute);
+    }
+
+
+    /**
+     * Spell a keyword the way the device spells its attributes: the words of its own vocabulary
+     * with their spelling and everything else capitalized. The device lists the attributes next to
+     * each other as filters, where a lower case 'poly' stands out between the capitalized words of
+     * the factory sound sets.
+     *
+     * @param keyword The keyword
+     * @return The attribute
+     */
+    private static String formatAttribute (final String keyword)
+    {
+        final String attribute = VOCABULARY.get (keyword.toUpperCase (Locale.US));
+        if (attribute != null)
+            return attribute;
+
+        final StringBuilder sb = new StringBuilder ();
+        for (final String word: keyword.split ("[ _]+"))
+        {
+            if (word.isEmpty ())
+                continue;
+            if (sb.length () > 0)
+                sb.append (' ');
+            sb.append (Character.toUpperCase (word.charAt (0))).append (word.substring (1));
+        }
+        return sb.toString ();
     }
 
 

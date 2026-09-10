@@ -546,6 +546,14 @@ result to the destination's range **(fw)**.
   Percussion, Drone, Pluck, Brass*. Leave unused slots empty rather than writing a placeholder such
   as *Unknown*, which would become a filter entry of its own.
 
+  ConvertWithMoss fills the four slots in this order: the category of the source translated into the
+  word above, then every word of the preset name which is one of them (looked up under the factory
+  spelling, under the abbreviations libraries use as a name prefix - *GRAN*, *PHYS*, *PLUK*, *FLUT*,
+  *BRAS*, *PERC*, *SEQ*, *SYN* - and under the plural), then the keywords of the source, capitalized.
+  The name is worth searching because the vocabulary of the device is not the one of a sample format:
+  *Granular*, *Resonator*, *Wavetable*, *Kernels* and *PPG* describe how the instrument makes a sound
+  and no category maps onto them, while a library which names a patch *GRAN Fields* states it.
+
 ## 7. Writing a patch
 
 ### 7.1 Minimal parameter set
@@ -656,7 +664,10 @@ device-written), writing them has not.
 ## 8. Reading a patch
 
 * Check the magic at 0 and read the version at 4 (section 2.5).
-* Read the header strings (section 2.1) and the four attributes.
+* Read the header strings (section 2.1) and the four attributes. A patch which carries no attributes
+  says nothing about its category; ConvertWithMoss then guesses one from the file name, the folders
+  and the bank, which lets a renamed library be tagged by a Quantum/Iridium to Quantum/Iridium
+  conversion.
 * Walk the resource table; keep types 4-6 as the maps of oscillators 1-3 and **skip** every other
   type (wavetables 1-3, the MK2's type 7, anything newer).
 * Read `count` records of 68 bytes from 512 into a name -> value dictionary. Ignore unknown names
