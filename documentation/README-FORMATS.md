@@ -100,6 +100,7 @@ The following multi-sample formats are supported:
 * [Synclavier Regen](#synclavier-regen)
 * [Synthstrom Deluge](#synthstrom-deluge)
 * [TAL Sampler](#tal-sampler)
+* [Teenage Engineering OP-1 Field](#teenage-engineering-op-1-field)
 * [Teenage Engineering OP-XY](#teenage-engineering-op-xy)
 * [Waldorf Quantum MkI, MkII / Iridium / Iridium Core](#waldorf-quantum-mki-mkii--iridium--iridium-core)
 * [Yamaha YSFC](#yamaha-ysfc)
@@ -1067,6 +1068,21 @@ Choosing TAL Sampler as the destination format, creates a *talsmpl*
 file and stores all samples in a sub-folder by the same name. The samples of the source groups are distributed across the 4 layers of TAL Sampler in such a way that the key and velocity splits do not overlap. This is a workaround for the fact that TAL Sampler does not support overlapping samples. Since groups have only the name and trigger type as attributes, which are not supported in TAL Sampler anyway, this should work in most cases. If there are still overlapping samples a warning is displayed.
 
 The decay is the exception to the time law of the envelopes above: it approaches the sustain level exponentially and much slower than the other stages - with the value 0.4 it falls by 6 dB after 0.35 seconds and by every further 6 dB after the same time again. It is converted to the linear decay which reaches -20 dB at the same moment, 37.1 x^3.75 seconds (0.4 is 1.2 seconds, 0.6 is 5.5 seconds), and written back with the inverse law.
+
+## Teenage Engineering OP-1 Field
+
+The OP-1 Field is a portable synthesizer, sampler and recorder from Teenage Engineering. A patch is an AIFF file (file ending *aif*) which contains the sample and, in an application chunk, the parameters of the patch as a JSON document. The patches of the original OP-1 use the same format and are read as well.
+
+Reading supports the two kinds of patches which play samples:
+
+* A drum kit plays a part of its sample on each of its 24 keys. Each key becomes a sample zone on its own note, from MIDI note 53 for the lowest key up to 76, with the part of the sample which the key plays, its pitch (as root key and tuning), gain, panning, play direction and play mode: 'one shot' and 'group' play the whole part, 'loop' repeats it while the key is pressed and 'gate' plays it while the key is pressed. Keys which play nearly the same part of the sample, e.g. the same sound with a different pitch, share it. A key in A/B mode, in which the two channels of the sample contain two different sounds and the panning blends between them, gets the blend of the two channels as a mono sample of its own. The volume of a key is a linear factor of 15383, which is read as 0 dB: the volume which the drum kits made on the device store for keys whose gain was not changed.
+* A patch of the sampler synthesizer engine plays its sample chromatically across the keyboard. The root key and tuning come from the base frequency of the sample, the play range and the loop from the start, end, loop in and loop out positions of the engine, which relate to a sample of 6 seconds, and the play direction is read as well.
+
+The patches of the other synthesizer engines contain no samples and are reported as such. The octave of a patch, the envelopes, the fades of the keys of a drum kit, the effect and the LFO are not converted.
+
+Writing creates a drum kit, which is the way the OP-1 Field plays several samples: the zones are laid out chromatically across the 24 keys, each key plays the zone of its note transposed to the note of the key, and the keys which play the same sample share it. If the zones lie outside of the 24 keys from MIDI note 53, they are moved by whole octaves until they cover as many keys as possible; the log then names the notes of the source which the keys play. A drum kit (a source with one zone per key whose category is a drum category) keeps the order of its keys instead, with its lowest 24 keys. Since the keys of the device are not velocity sensitive, of several zones on a key the one with the highest velocity is used. The play mode is 'one shot' for a one-shot zone, 'loop' for a zone whose loop spans all of its part of the sample and 'gate' otherwise; other loops are not written. A key transposes by at most 4 octaves up or down.
+
+A drum kit holds 20 seconds of stereo or 12 seconds of mono audio at 16 bit / 44.1 kHz. Mono sounds which need more than 12 seconds are stored in a stereo drum kit. If the sounds still do not fit, the longest ones are shortened to the same length and faded out where they are cut; a reversed sound loses its start instead, which it plays last. The processing option *Reduce Samples* stores fewer sounds, which then need less shortening. The effect, the LFO and the envelope of a written drum kit are the ones of a new drum kit.
 
 ## Teenage Engineering OP-XY
 

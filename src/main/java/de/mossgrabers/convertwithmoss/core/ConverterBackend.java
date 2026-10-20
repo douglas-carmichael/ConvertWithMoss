@@ -133,6 +133,8 @@ import de.mossgrabers.convertwithmoss.format.synthstrom.DelugeCreator;
 import de.mossgrabers.convertwithmoss.format.synthstrom.DelugeDetector;
 import de.mossgrabers.convertwithmoss.format.tal.TALSamplerCreator;
 import de.mossgrabers.convertwithmoss.format.tal.TALSamplerDetector;
+import de.mossgrabers.convertwithmoss.format.teenage.op1.Op1FieldCreator;
+import de.mossgrabers.convertwithmoss.format.teenage.op1.Op1FieldDetector;
 import de.mossgrabers.convertwithmoss.format.teenage.opxy.OpXyCreator;
 import de.mossgrabers.convertwithmoss.format.teenage.opxy.OpXyDetector;
 import de.mossgrabers.convertwithmoss.format.tx16wx.TX16WxCreator;
@@ -264,6 +266,7 @@ public class ConverterBackend
         this.detectors.add (new OmnisphereDetector (notifier));
         this.detectors.add (new SynclavierRegenDetector (notifier));
         this.detectors.add (new DelugeDetector (notifier));
+        this.detectors.add (new Op1FieldDetector (notifier));
         this.detectors.add (new OpXyDetector (notifier));
         this.detectors.add (new TALSamplerDetector (notifier));
         this.detectors.add (new WaldorfQpatDetector (notifier));
@@ -315,6 +318,7 @@ public class ConverterBackend
         this.creators.add (new OmnisphereCreator (notifier));
         this.creators.add (new SynclavierRegenCreator (notifier));
         this.creators.add (new DelugeCreator (notifier));
+        this.creators.add (new Op1FieldCreator (notifier));
         this.creators.add (new OpXyCreator (notifier));
         this.creators.add (new TALSamplerCreator (notifier));
         this.creators.add (new WaldorfQpatCreator (notifier));

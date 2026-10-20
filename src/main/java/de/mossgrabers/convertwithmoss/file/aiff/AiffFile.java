@@ -10,9 +10,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 
@@ -68,6 +70,7 @@ public class AiffFile
     private final List<IffChunk>      unprocessedChunks = new ArrayList<> ();
     private final List<AiffChunk>     chunkStack        = new ArrayList<> ();
     private final Map<String, String> metadata          = new TreeMap<> ();
+    private final List<IffChunk>      applicationChunks = new ArrayList<> ();
 
 
     /**
@@ -161,6 +164,25 @@ public class AiffFile
 
 
     /**
+     * Get the data of an application specific chunk.
+     *
+     * @param signature The signature of the application, which are the first 4 characters of the
+     *            chunk, e.g. 'op-1'
+     * @return The data of the chunk which follows the signature, if such a chunk is present
+     */
+    public Optional<byte []> getApplicationData (final String signature)
+    {
+        for (final IffChunk chunk: this.applicationChunks)
+        {
+            final byte [] data = chunk.getData ();
+            if (data.length >= 4 && signature.equals (new String (data, 0, 4, StandardCharsets.US_ASCII)))
+                return Optional.of (Arrays.copyOfRange (data, 4, data.length));
+        }
+        return Optional.empty ();
+    }
+
+
+    /**
      * Reads an AIFF file from a stream.
      *
      * @param inputStream The input stream which provides the AIFF file
@@ -242,6 +264,11 @@ public class AiffFile
                     break;
 
                 case AIFF_CHUNK_APPLICATION:
+                    // The content is specific to the application, see getApplicationData
+                    this.applicationChunks.add (chunk);
+                    this.unprocessedChunks.add (chunk);
+                    break;
+
                 case AIFF_CHUNK_AUDIO_RECORDING:
                 case AIFF_CHUNK_AUDIO_MIDI:
                 case AIFC_CHUNK_FORMAT_VERSION:
