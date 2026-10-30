@@ -58,15 +58,13 @@ class EXS24Instrument extends EXS24Object
         this.numSampleBlocks = (int) StreamUtils.readUnsigned32 (in, isBigEndian);
         this.numParameterBlocks = (int) StreamUtils.readUnsigned32 (in, isBigEndian);
 
-        // No idea about these values, maybe there are more unknown block types
+        // The number of blocks of the types 5 to 9: tagged records, kit piece information, key
+        // names, unknown blocks (there are files with 16 of them, whose 4 bytes are all 0) and kit
+        // piece records, which the conversion does not use
         StreamUtils.readUnsigned32 (in, isBigEndian);
         StreamUtils.readUnsigned32 (in, isBigEndian);
         StreamUtils.readUnsigned32 (in, isBigEndian);
-        // There are files which have this set and then 16 blocks appear with a block type of 8. The
-        // content of each block is 4 bytes but they are all 0.
         StreamUtils.readUnsigned32 (in, isBigEndian);
-
-        // No idea about this value, maybe there are more unknown block types
         StreamUtils.readUnsigned32 (in, isBigEndian);
 
         // There can be more bytes...
@@ -85,15 +83,13 @@ class EXS24Instrument extends EXS24Object
         StreamUtils.writeUnsigned32 (out, this.numSampleBlocks, isBigEndian);
         StreamUtils.writeUnsigned32 (out, this.numParameterBlocks, isBigEndian);
 
-        // No idea about these values, maybe there are more unknown block types
+        // The number of blocks of the types 5 to 9: tagged records, kit piece information, key
+        // names, unknown blocks (there are files with 16 of them, whose 4 bytes are all 0) and kit
+        // piece records; none of them is written
         StreamUtils.writeUnsigned32 (out, 0, isBigEndian);
         StreamUtils.writeUnsigned32 (out, 0, isBigEndian);
         StreamUtils.writeUnsigned32 (out, 0, isBigEndian);
-        // There are files which have this set and then 16 blocks appear with a block type of 8. The
-        // content of each block is 4 bytes but they are all 0.
         StreamUtils.writeUnsigned32 (out, 0, isBigEndian);
-
-        // No idea about this value, maybe there are more unknown block types
         StreamUtils.writeUnsigned32 (out, 0, isBigEndian);
     }
 }

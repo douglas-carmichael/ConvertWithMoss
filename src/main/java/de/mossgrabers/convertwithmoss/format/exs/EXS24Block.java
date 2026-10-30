@@ -39,8 +39,17 @@ class EXS24Block
      * the multi-sample.
      */
     public static final int          TYPE_TAGGED_RECORDS        = 0x05;
+    /** A block of 4 bytes with unknown content, found in the kit pieces of Drum Kit Designer. */
+    public static final int          TYPE_KIT_PIECE_INFO        = 0x06;
+    /**
+     * The name of a key, e.g. of the articulation which a key of a drum kit plays. The index of the
+     * block is the MIDI note of the key.
+     */
+    public static final int          TYPE_KEY_NAME              = 0x07;
     /** An unknown block. */
     public static final int          TYPE_UNKNOWN               = 0x08;
+    /** A block of tagged records (tagged 'LMNA'), found in the kit pieces of Drum Kit Designer. */
+    public static final int          TYPE_KIT_PIECE_RECORDS     = 0x09;
     /** A BPLIST with the layout configuration of Sampler. */
     public static final int          TYPE_BPLIST_SAMPLER_LAYOUT = 0x0A;
     /** Contains a MacOS PLIST structure in byte format with information about the sample files. */

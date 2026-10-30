@@ -139,6 +139,13 @@ public class EXS24File
                     // No idea what that is but it is 4 bytes long and they are always 0
                     break;
 
+                case EXS24Block.TYPE_KEY_NAME:
+                case EXS24Block.TYPE_KIT_PIECE_INFO:
+                case EXS24Block.TYPE_KIT_PIECE_RECORDS:
+                    // Information about the keys and kit pieces of drum kits, which the conversion
+                    // does not use
+                    break;
+
                 case EXS24Block.TYPE_BPLIST_SAMPLER_LAYOUT:
                     // A BPLIST with the layout configuration of Sampler
                     break;
