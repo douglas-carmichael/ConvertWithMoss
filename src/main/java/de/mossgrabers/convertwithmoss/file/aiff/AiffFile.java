@@ -223,7 +223,11 @@ public class AiffFile
                             in.skipNBytes (2);
                             final int length = StreamUtils.readUnsigned16 (in, true);
                             final String comment = StreamUtils.readAscii (in, length).trim ();
-                            if (comment.length () % 2 == 1)
+                            // An odd number of characters is followed by a pad byte; this depends
+                            // on the stored length, not on the trimmed text (e.g. Logic Pro starts
+                            // its comment with a space). The pad of the last comment might be
+                            // missing at the end of the chunk
+                            if (length % 2 == 1 && in.available () > 0)
                                 in.skipNBytes (1);
                             if (!comment.isBlank ())
                                 this.metadata.put ("Comment" + (i + 1), comment);
