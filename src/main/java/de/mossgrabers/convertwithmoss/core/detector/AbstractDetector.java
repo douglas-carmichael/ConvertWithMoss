@@ -84,6 +84,8 @@ public abstract class AbstractDetector<T extends ICoreTaskSettings> extends Abst
     private static final String               IDS_ERR_SOURCE_FORMAT_NOT_SUPPORTED = "IDS_ERR_SOURCE_FORMAT_NOT_SUPPORTED";
 
     private static final Pattern              NON_WORD_PATTERN                    = Pattern.compile ("\\W");
+    /** The characters which Windows does not allow in a file name, apart from path separators. */
+    private static final Pattern              WINDOWS_RESERVED_PATTERN            = Pattern.compile ("[\"*:<>?|\\x00-\\x1F]");
 
     private static final AudioFileFormat.Type OGG_TYPE                            = new AudioFileFormat.Type ("OGG", "ogg");
     private static final AudioFileFormat.Type FLAC_TYPE                           = new AudioFileFormat.Type ("FLAC", "flac");
@@ -1202,6 +1204,17 @@ public abstract class AbstractDetector<T extends ICoreTaskSettings> extends Abst
         if (ignoreCaseFile.exists ())
             return ignoreCaseFile;
 
+        // A file whose name contains characters which Windows does not allow is renamed when it
+        // is copied or unpacked on Windows, which replaces them with an underscore - e.g. the
+        // sample 'Spkn "Uh Huhh".aif' becomes 'Spkn _Uh Huhh_.aif'. Look it up by that name, too.
+        final String windowsFileName = replaceWindowsReservedCharacters (fileName);
+        if (!windowsFileName.equals (fileName))
+        {
+            final File windowsFile = findFile (notifier, folder, previousFolder, windowsFileName, levels, fileType);
+            if (windowsFile.exists ())
+                return windowsFile;
+        }
+
         // Triggers the missing file error
         return localFile;
     }
@@ -1297,6 +1310,21 @@ public abstract class AbstractDetector<T extends ICoreTaskSettings> extends Abst
         }
 
         return variants;
+    }
+
+
+    /**
+     * Replace the characters which Windows does not allow in a file name with an underscore, as
+     * Windows tools do when they copy or unpack such a file. Only the name of the file is changed,
+     * not a path in front of it.
+     *
+     * @param fileName The name of the file, might start with a path
+     * @return The name with the characters replaced
+     */
+    private static String replaceWindowsReservedCharacters (final String fileName)
+    {
+        final int nameStart = Math.max (fileName.lastIndexOf ('/'), fileName.lastIndexOf ('\\')) + 1;
+        return fileName.substring (0, nameStart) + WINDOWS_RESERVED_PATTERN.matcher (fileName.substring (nameStart)).replaceAll ("_");
     }
 
 
